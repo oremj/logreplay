@@ -32,15 +32,23 @@ class logWorker(threading.Thread):
         self.close_connection()
 
 class DefaultWorker(logWorker):
-    def __init__(self,addr,return_type,host):
+    def __init__(self, addr, return_type, host, ip, port):
         self.HOST = host
+        self.PORT = port
+        if ip:
+            self.IP = ip
+        else:
+            self.IP = host
         self.headers = {"Host" : host, "Keep-Alive": 300, "Connection" : "keep-alive"}
         logWorker.__init__(self,addr,return_type)
+
     def make_connection(self):
         self.connects += 1
-        self.s = httplib.HTTPConnection(self.HOST)
+        self.s = httplib.HTTPConnection(self.IP, self.PORT)
+
     def close_connection(self):
         self.s.close() 
+
     def send_data(self,ad):
         self.s.request("GET",ad,None,self.headers)
         response = self.s.getresponse()
@@ -48,6 +56,7 @@ class DefaultWorker(logWorker):
 
     def good(self):
         self.rt[1] += 1
+
     def bad(self):
         self.rt[0] += 1
         self.status = 0

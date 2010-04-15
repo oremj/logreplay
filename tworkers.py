@@ -32,11 +32,11 @@ class QuickTesterFactory(HTTPClientFactory):
     protocol = QuickTester
 
     def __init__(self, **kwargs):
-        self.reqs = kwargs['requests']
-        self.report = kwargs['report'] 
+        self.reqs = kwargs.pop('requests')
+        self.report = kwargs.pop('report')
+        self.ip = kargs.pop('ip')
+        self.host_port = kwargs.pop('port')
         self.activecons = 0
-        del kwargs['requests']
-        del kwargs['report']
         HTTPClientFactory.__init__(self, **kwargs)
 
     def start(self, num_concurrent):
@@ -57,7 +57,7 @@ class QuickTesterFactory(HTTPClientFactory):
     def nextRequest(self):
         try:
             self.path = self.reqs.pop() 
-            reactor.connectTCP(self.host, 80, self)
+            reactor.connectTCP(self.ip, self.host_port, self)
         except:
             if self.activecons <= 1:
                 self.report['end_time'] = time.time()

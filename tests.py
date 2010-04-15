@@ -47,6 +47,8 @@ class TwistedTest(logReplay):
         self.HOST = options.H
         self.FILES = options.f
         self.PREFIX = options.p
+        self.IP = options.i
+        self.PORT = options.port
         self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*) HTTP.*?\"") 
         
     def report(self):
@@ -76,7 +78,7 @@ class TwistedTest(logReplay):
         return
 
     def replayLog(self):
-        f = tworkers.QuickTesterFactory(url="http://" + self.HOST + "/", requests=self.log_entries, report=self.returntypes)
+        f = tworkers.QuickTesterFactory(ip=self.IP, port=self.PORT, url="http://" + self.HOST + "/", requests=self.log_entries, report=self.returntypes)
         f.start(self.THREADCOUNT)
         self.endTime = time.time()
 
@@ -88,6 +90,8 @@ class DefaultTest(logReplay):
         self.THREADCOUNT = options.t
         self.HOST = options.H
         self.FILES = options.f
+        self.IP = options.i
+        self.PORT = options.port
         self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"(GET /.* HTTP.*?)\"") 
 
     def report(self):
@@ -110,18 +114,20 @@ class DefaultTest(logReplay):
         delta = date_and_time - self.initial
         self.log_entries.setdefault(delta.seconds,[]).append(line_search.group(2))
         return
+
     def replayLog(self):
         for i in range(0,max(self.log_entries.keys()) + 1):
             try:
                 for a in self.log_entries[i]:
                     while(threading.activeCount() > self.THREADCOUNT):
                         time.sleep(.1)
-                    workers.DefaultWorker(a,self.returntypes,self.HOST).start()
+                    workers.DefaultWorker(a, self.returntypes, self.HOST, self.IP, self.PORT).start()
             except KeyError: pass
             time.sleep(1)
         while(threading.activeCount() >1):
             time.sleep(1)
         self.endTime = time.time()
+
 class QuickTest(logReplay):
     def __init__(self,options):
         # Just get the URL
@@ -131,6 +137,8 @@ class QuickTest(logReplay):
         self.HOST = options.H
         self.FILES = options.f
         self.PREFIX = options.p
+        self.IP = options.i
+        self.PORT = options.port
         self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*) HTTP.*?\"") 
 
     def report(self):
@@ -147,16 +155,18 @@ class QuickTest(logReplay):
             return
         self.log_entries.append(self.PREFIX + line_search.group(2))
         return
+
     def replayLog(self):
         try:
                 for i in range(0,len(self.log_entries),10):
                     while(threading.activeCount() > self.THREADCOUNT):
                         time.sleep(.1)
-                    workers.DefaultWorker(self.log_entries[i:i+10],self.returntypes,self.HOST).start()
+                    workers.DefaultWorker(self.log_entries[i:i+10], self.returntypes, self.HOST, self.IP, self.PORT).start()
                 while(threading.activeCount() >1):
                     time.sleep(1)
         except KeyboardInterrupt: pass
         self.endTime = time.time()
+
 class NutchTest(logReplay):
     # Just get the URL
     def __init__(self,options):
@@ -166,11 +176,13 @@ class NutchTest(logReplay):
         self.THREADCOUNT = options.t
         self.HOST = options.H
         self.FILES = options.f
+
     def report(self):
         print "Good: " + str(self.returntypes[1])
         print "Bad: " + str(self.returntypes[0])
         print "Total Time: " + str(self.endTime - self.startTime)
         print "Req/s: " + str(float(self.returntypes[1]) / (self.endTime - self.startTime))
+
     def collect_data(self,line):
         try: 
             line_search = self.regex.search(line)
@@ -179,13 +191,14 @@ class NutchTest(logReplay):
             return
         self.log_entries.append(line_search.group(1))
         return
+
     def replayLog(self):
         try:
                 for i in range(0,len(self.log_entries),10):
                     while(threading.activeCount() > self.THREADCOUNT):
                         time.sleep(.1)
                     urls = [ "/opensearch?query=site:www.mozilla.com+%s&hitsPerPage=10&hitsPerSite=0&start=0" % ( t ) for t in self.log_entries[i:i+10] ]
-                    workers.DefaultWorker(urls,self.returntypes,self.HOST).start()
+                    workers.DefaultWorker(urls, self.returntypes, self.HOST, self.IP, self.PORT).start()
                 while(threading.activeCount() >1):
                     time.sleep(1)
         except KeyboardInterrupt: pass
