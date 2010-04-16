@@ -65,9 +65,9 @@ class QuickTesterFactory(HTTPClientFactory):
         return self.reqs.pop()
 
     def nextRequest(self):
-        try:
+        if self.reqs:
             reactor.connectTCP(self.ip, self.host_port, self)
-        except:
+        else:
             if self.activecons <= 1:
                 self.report['end_time'] = time.time()
                 reactor.stop()
