@@ -49,7 +49,7 @@ class TwistedTest(logReplay):
         self.PREFIX = options.p
         self.IP = options.i
         self.PORT = options.port
-        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*) HTTP.*?\"") 
+        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\"") 
         
     def report(self):
         self.returntypes['start_end_times'].sort(cmp=lambda x,y: cmp(x[1] - x[0], y[1] - y[0]))
