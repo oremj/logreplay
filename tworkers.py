@@ -44,7 +44,7 @@ class QuickTesterFactory(HTTPClientFactory):
         self.ip = kwargs.pop('ip')
         self.host_port = kwargs.pop('port')
         self.activecons = 0
-        self.total_reqs = len(reqs)
+        self.total_reqs = len(self.reqs)
         HTTPClientFactory.__init__(self, **kwargs)
 
     def start(self, num_concurrent):
