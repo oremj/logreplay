@@ -79,7 +79,10 @@ class TwistedTest(logReplay):
 
     def replayLog(self):
         f = tworkers.QuickTesterFactory(ip=self.IP, port=self.PORT, url="http://" + self.HOST + "/", requests=self.log_entries, report=self.returntypes)
-        f.start(self.THREADCOUNT)
+        try:
+            f.start(self.THREADCOUNT)
+        except KeyboardInterrupt:
+            f.stop()
         self.endTime = time.time()
 
 class DefaultTest(logReplay):
