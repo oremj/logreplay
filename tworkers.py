@@ -26,14 +26,12 @@ class QuickTester(HTTPClient):
 
     def handleResponse(self, data):
         end_time = time.time()
-        self.factory.report['start_end_times'].append((self.startTime, end_time))
         if self.status is None or self.status >=400:
             self.factory.report[0] += 1
         else:
+            self.factory.report['start_end_times'].append((self.startTime, end_time))
             self.factory.report[1] += 1
         self.factory.nextRequest()
-
-
 
 class QuickTesterFactory(HTTPClientFactory):
     protocol = QuickTester
