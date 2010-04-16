@@ -5,8 +5,10 @@ from twisted.internet import reactor
 
 
 class QuickTester(HTTPClient):
+
     def connectionMade(self):
-        self.sendCommand(self.factory.method, self.factory.path)
+        self.path = self.factory.next_path()
+        self.sendCommand(self.factory.method, self.path)
         self.sendHeader('Host', self.factory.headers.get("host", self.factory.host))
         self.sendHeader('User-Agent', self.factory.agent)
         self.endHeaders()
@@ -59,9 +61,11 @@ class QuickTesterFactory(HTTPClientFactory):
     def clientConnectionFailed(self, connector, reason):
         self.activecons -= 1
 
+    def next_path(self):
+        return self.reqs.pop()
+
     def nextRequest(self):
         try:
-            self.path = self.reqs.pop() 
             reactor.connectTCP(self.ip, self.host_port, self)
         except:
             if self.activecons <= 1:
