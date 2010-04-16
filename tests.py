@@ -62,7 +62,7 @@ class TwistedTest(logReplay):
         min_time = min(requesttimes)
         avg_time = sum(requesttimes) / total_requests
         std_dev = math.sqrt(sum( (i - avg_time) ** 2 for i in requesttimes ) / total_requests) 
-        print "Good: " + str(total_requests)
+        print "Good: " + str(self.returntypes[1])
         print "Max/Avg/Min/StdDev: %dms/%dms/%dms/%dms" % (max_time, avg_time, min_time, std_dev)
         print "Bad: " + str(self.returntypes[0])
         print "Total Time: " + str(end_time - start_time)
