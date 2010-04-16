@@ -44,6 +44,7 @@ class QuickTesterFactory(HTTPClientFactory):
         self.ip = kwargs.pop('ip')
         self.host_port = kwargs.pop('port')
         self.activecons = 0
+        self.total_reqs = len(reqs)
         HTTPClientFactory.__init__(self, **kwargs)
 
     def start(self, num_concurrent):
@@ -65,7 +66,8 @@ class QuickTesterFactory(HTTPClientFactory):
         return self.reqs.pop()
 
     def nextRequest(self):
-        if self.reqs:
+        if self.total_reqs > 0:
+            self.total_reqs -= 1
             reactor.connectTCP(self.ip, self.host_port, self)
         else:
             if self.activecons <= 1:
