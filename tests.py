@@ -10,13 +10,22 @@ import workers
 
 class LogReplay(object):
 
-    def __init__(self):
+    def __init__(self, opts):
+        self.opts = opts
         self.report_data = {}
         self.report_data['GOOD'] = 0
         self.report_data['BAD'] = 0
         self.initial = 0
-        self.regex = re.compile("")
-        self.FILES = ()
+        self.log_entries = []
+        self.regex = re.compile(self._REGEX)
+
+        self.THREADCOUNT = opts.threadlimit
+        self.HOST = opts.host
+        self.FILES = opts.file
+        self.PREFIX = opts.urlprefix
+        self.IP = opts.ip
+        self.PORT = opts.port
+        self.AUTH = opts.auth
 
     def parse_args(self):
         raise NotImplementedError()
@@ -50,23 +59,18 @@ class LogReplay(object):
 
 class TwistedTest(LogReplay):
 
-    def __init__(self, options):
-        super(TwistedTest, self).__init__()
+    _REGEX = "(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\""
+
+    def __init__(self, opts):
+        super(TwistedTest, self).__init__(opts)
         self.report_data['start_end_times'] = []
-        self.log_entries = []
-        self.THREADCOUNT = options.t
-        self.HOST = options.H
-        self.FILES = options.f
-        self.PREFIX = options.p
-        self.IP = options.i
-        self.PORT = options.port
-        self.AUTH = options.P
-        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\"")
 
     def report(self):
-        self.report_data['start_end_times'].sort(cmp=lambda x, y: cmp(x[1] - x[0], y[1] - y[0]))
+        self.report_data['start_end_times'].sort(
+            cmp=lambda x, y: cmp(x[1] - x[0], y[1] - y[0]))
         self.report_data['start_end_times'] = self.report_data['start_end_times'][:int(len(self.report_data['start_end_times']) * .95)]
-        requesttimes = [(j - i) * 1000 for i, j in self.report_data['start_end_times']]
+        requesttimes = [(j - i) * 1000 
+                            for i, j in self.report_data['start_end_times']]
         total_requests = len(requesttimes)
         start_time = min(i for i, j in self.report_data['start_end_times'])
         end_time = max(j for i, j in self.report_data['start_end_times'])
@@ -104,16 +108,12 @@ class TwistedTest(LogReplay):
 
 class DefaultTest(LogReplay):
 
-    def __init__(self, options):
+    _REGEX = "(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\""
+
+    def __init__(self, opts):
         # Just get the URL
-        super(DefaultTest, self).__init__()
+        super(DefaultTest, self).__init__(opts)
         self.log_entries = {}
-        self.THREADCOUNT = options.t
-        self.HOST = options.H
-        self.FILES = options.f
-        self.IP = options.i
-        self.PORT = options.port
-        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"(GET /.* HTTP.*?)\"")
 
     def report(self):
         print "Good: " + str(self.report_data['GOOD'])
@@ -154,17 +154,7 @@ class DefaultTest(LogReplay):
 
 class QuickTest(LogReplay):
 
-    def __init__(self, options):
-        # Just get the URL
-        super(QuickTest, self).__init__()
-        self.log_entries = []
-        self.THREADCOUNT = options.t
-        self.HOST = options.H
-        self.FILES = options.f
-        self.PREFIX = options.p
-        self.IP = options.i
-        self.PORT = options.port
-        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*) HTTP.*?\"")
+    _REGEX = "(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\""
 
     def report(self):
         print "Good: " + str(self.report_data['GOOD'])
@@ -197,13 +187,7 @@ class QuickTest(LogReplay):
 
 class NutchTest(LogReplay):
 
-    def __init__(self, options):
-        super(NutchTest, self).__init__()
-        self.log_entries = []
-        self.regex = re.compile("(\w*)")
-        self.THREADCOUNT = options.t
-        self.HOST = options.H
-        self.FILES = options.f
+    _REGEX = "(\w*)"
 
     def report(self):
         print "Good: " + str(self.report_data['GOOD'])
