@@ -1,14 +1,16 @@
-import re
-import math
-import threading
-import socket
-import time, datetime
-import sys
+import datetime
 import gzip
-import workers
+import math
+import re
+import socket
+import sys
+import threading
+import time
 import tworkers
+import workers
 
-class logReplay:
+
+class LogReplay(object):
 
     def __init__(self):
         self.returntypes = {}
@@ -17,30 +19,41 @@ class logReplay:
         self.initial = 0
         self.regex = re.compile("")
         self.FILES = ()
-    def parse_args(self): pass
-    # Implement this in child classes
-    def collect_data(self,line): pass
+
+    def parse_args(self):
+        raise NotImplementedError()
+
+    def collect_data(self, line):
+        raise NotImplementedError()
+
     def go(self):
         self.loadLogs()
         self.startTime = time.time()
         self.replayLog()
         self.report()
+
     def loadLogs(self):
-        for log in self.FILES: 
+        for log in self.FILES:
             print "Reading: " + log
-            if re.match("^.*\.gz$",log):
-                f = gzip.open(log,'r').readlines()
+            if re.match("^.*\.gz$", log):
+                f = gzip.open(log, 'r').readlines()
             else:
-                f = open(log,'r').readlines()
+                f = open(log, 'r').readlines()
             for line in f:
                 self.collect_data(line)
             print "Done reading"
-    def replayLog(self): pass
-    def report(self): pass
 
-class TwistedTest(logReplay):
+    def replayLog(self):
+        raise NotImplementedError()
+
+    def report(self):
+        raise NotImplementedError()
+
+
+class TwistedTest(LogReplay):
+
     def __init__(self, options):
-        logReplay.__init__(self)
+        super(TwistedTest, self).__init__()
         self.returntypes['start_end_times'] = []
         self.log_entries = []
         self.THREADCOUNT = options.t
@@ -49,29 +62,30 @@ class TwistedTest(logReplay):
         self.PREFIX = options.p
         self.IP = options.i
         self.PORT = options.port
-        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\"") 
-        
+        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\"")
+
     def report(self):
-        self.returntypes['start_end_times'].sort(cmp=lambda x,y: cmp(x[1] - x[0], y[1] - y[0]))
+        self.returntypes['start_end_times'].sort(cmp=lambda x, y: cmp(x[1] - x[0], y[1] - y[0]))
         self.returntypes['start_end_times'] = self.returntypes['start_end_times'][:int(len(self.returntypes['start_end_times']) * .95)]
-        requesttimes = [ (j - i) * 1000 for i,j in self.returntypes['start_end_times'] ]
+        requesttimes = [(j - i) * 1000 for i, j in self.returntypes['start_end_times']]
         total_requests = len(requesttimes)
-        start_time = min( i for i,j in self.returntypes['start_end_times'] )
-        end_time = max( j for i,j in self.returntypes['start_end_times'] )
+        start_time = min(i for i, j in self.returntypes['start_end_times'])
+        end_time = max(j for i, j in self.returntypes['start_end_times'])
         max_time = max(requesttimes)
         min_time = min(requesttimes)
         avg_time = sum(requesttimes) / total_requests
-        std_dev = math.sqrt(sum( (i - avg_time) ** 2 for i in requesttimes ) / total_requests) 
+        std_dev = math.sqrt(sum((i - avg_time) ** 2 for i in requesttimes) / total_requests)
         print "Good: " + str(self.returntypes[1])
         print "Max/Avg/Min/StdDev: %dms/%dms/%dms/%dms" % (max_time, avg_time, min_time, std_dev)
         print "Bad: " + str(self.returntypes[0])
         print "Total Time: " + str(end_time - start_time)
         print "Req/s: " + str(total_requests / (end_time - start_time))
 
-    def collect_data(self,line):
-        try: 
+    def collect_data(self, line):
+        try:
             line_search = self.regex.search(line)
-        except: pass
+        except:
+            pass
         if not line_search:
             return
         self.log_entries.append(self.PREFIX + line_search.group(2))
@@ -85,56 +99,62 @@ class TwistedTest(logReplay):
             f.stop()
         self.endTime = time.time()
 
-class DefaultTest(logReplay):
-    def __init__(self,options):
+
+class DefaultTest(LogReplay):
+
+    def __init__(self, options):
         # Just get the URL
-        logReplay.__init__(self)
+        super(DefaultTest, self).__init__()
         self.log_entries = {}
         self.THREADCOUNT = options.t
         self.HOST = options.H
         self.FILES = options.f
         self.IP = options.i
         self.PORT = options.port
-        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"(GET /.* HTTP.*?)\"") 
+        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"(GET /.* HTTP.*?)\"")
 
     def report(self):
         print "Good: " + str(self.returntypes[1])
         print "Bad: " + str(self.returntypes[0])
         print "Total Time: " + str(self.endTime - self.startTime)
         print "Req/s: " + str(float(self.returntypes[1]) / (self.endTime - self.startTime))
-        
-    def collect_data(self,line):
-        try: 
+
+    def collect_data(self, line):
+        try:
             line_search = self.regex.search(line)
-        except: pass
+        except:
+            pass
         if not line_search:
             return
-        time_tuple = time.strptime(line_search.group(1),"%d/%b/%Y:%H:%M:%S")
+        time_tuple = time.strptime(line_search.group(1), "%d/%b/%Y:%H:%M:%S")
         date_and_time = datetime.datetime(*time_tuple[:6])
         if self.initial == 0:
             self.initial = date_and_time
 
         delta = date_and_time - self.initial
-        self.log_entries.setdefault(delta.seconds,[]).append(line_search.group(2))
+        self.log_entries.setdefault(delta.seconds, []).append(line_search.group(2))
         return
 
     def replayLog(self):
-        for i in range(0,max(self.log_entries.keys()) + 1):
+        for i in range(0, max(self.log_entries.keys()) + 1):
             try:
                 for a in self.log_entries[i]:
                     while(threading.activeCount() > self.THREADCOUNT):
                         time.sleep(.1)
                     workers.DefaultWorker(a, self.returntypes, self.HOST, self.IP, self.PORT).start()
-            except KeyError: pass
+            except KeyError:
+                pass
             time.sleep(1)
-        while(threading.activeCount() >1):
+        while(threading.activeCount() > 1):
             time.sleep(1)
         self.endTime = time.time()
 
-class QuickTest(logReplay):
-    def __init__(self,options):
+
+class QuickTest(LogReplay):
+
+    def __init__(self, options):
         # Just get the URL
-        logReplay.__init__(self)
+        super(QuickTest, self).__init__()
         self.log_entries = []
         self.THREADCOUNT = options.t
         self.HOST = options.H
@@ -142,18 +162,19 @@ class QuickTest(logReplay):
         self.PREFIX = options.p
         self.IP = options.i
         self.PORT = options.port
-        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*) HTTP.*?\"") 
+        self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*) HTTP.*?\"")
 
     def report(self):
         print "Good: " + str(self.returntypes[1])
         print "Bad: " + str(self.returntypes[0])
         print "Total Time: " + str(self.endTime - self.startTime)
         print "Req/s: " + str(float(self.returntypes[1]) / (self.endTime - self.startTime))
-        
-    def collect_data(self,line):
-        try: 
+
+    def collect_data(self, line):
+        try:
             line_search = self.regex.search(line)
-        except: pass
+        except:
+            pass
         if not line_search:
             return
         self.log_entries.append(self.PREFIX + line_search.group(2))
@@ -161,21 +182,23 @@ class QuickTest(logReplay):
 
     def replayLog(self):
         try:
-                for i in range(0,len(self.log_entries),10):
+                for i in range(0, len(self.log_entries), 10):
                     while(threading.activeCount() > self.THREADCOUNT):
                         time.sleep(.1)
-                    workers.DefaultWorker(self.log_entries[i:i+10], self.returntypes, self.HOST, self.IP, self.PORT).start()
-                while(threading.activeCount() >1):
+                    workers.DefaultWorker(self.log_entries[i:i + 10], self.returntypes, self.HOST, self.IP, self.PORT).start()
+                while(threading.activeCount() > 1):
                     time.sleep(1)
-        except KeyboardInterrupt: pass
+        except KeyboardInterrupt:
+            pass
         self.endTime = time.time()
 
-class NutchTest(logReplay):
-    # Just get the URL
-    def __init__(self,options):
-        logReplay.__init__(self)
+
+class NutchTest(LogReplay):
+
+    def __init__(self, options):
+        super(NutchTest, self).__init__()
         self.log_entries = []
-        self.regex = re.compile("(\w*)") 
+        self.regex = re.compile("(\w*)")
         self.THREADCOUNT = options.t
         self.HOST = options.H
         self.FILES = options.f
@@ -186,10 +209,11 @@ class NutchTest(logReplay):
         print "Total Time: " + str(self.endTime - self.startTime)
         print "Req/s: " + str(float(self.returntypes[1]) / (self.endTime - self.startTime))
 
-    def collect_data(self,line):
-        try: 
+    def collect_data(self, line):
+        try:
             line_search = self.regex.search(line)
-        except: pass
+        except:
+            pass
         if not line_search:
             return
         self.log_entries.append(line_search.group(1))
@@ -197,12 +221,13 @@ class NutchTest(logReplay):
 
     def replayLog(self):
         try:
-                for i in range(0,len(self.log_entries),10):
+                for i in range(0, len(self.log_entries), 10):
                     while(threading.activeCount() > self.THREADCOUNT):
                         time.sleep(.1)
-                    urls = [ "/opensearch?query=site:www.mozilla.com+%s&hitsPerPage=10&hitsPerSite=0&start=0" % ( t ) for t in self.log_entries[i:i+10] ]
+                    urls = ["/opensearch?query=site:www.mozilla.com+%s&hitsPerPage=10&hitsPerSite=0&start=0" % t for t in self.log_entries[i:i + 10]]
                     workers.DefaultWorker(urls, self.returntypes, self.HOST, self.IP, self.PORT).start()
-                while(threading.activeCount() >1):
+                while(threading.activeCount() > 1):
                     time.sleep(1)
-        except KeyboardInterrupt: pass
+        except KeyboardInterrupt:
+            pass
         self.endTime = time.time()
