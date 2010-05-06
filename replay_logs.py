@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import tests
 import optparse
 
@@ -16,6 +16,7 @@ opt_parser.add_option("-i", help="IP Address of host to replay against.  If unse
 opt_parser.add_option("--port", default=80, type="int", help="Port (default=80)")
 opt_parser.add_option("-t", type="int",help="Thread Limit",default=40)
 opt_parser.add_option("-p", help="URL Prefix", default="")
+opt_parser.add_option("-P", help="HTTP Basic Auth (as 'username:password')", default="")
 
 def main():
     (options, args) = opt_parser.parse_args()
