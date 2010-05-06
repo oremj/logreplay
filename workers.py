@@ -1,25 +1,32 @@
-import re
-import threading
-import socket
 import httplib
-import time, datetime
-import sys
-import gzip
+import threading
 
 
 class logWorker(threading.Thread): 
-    def __init__(self,addr,rt):
+
+    def __init__(self, addr, rt):
         self.addrs = addr
         self.status = 1
         self.connects = 0
         self.rt = rt
-        threading.Thread.__init__ ( self )
+        threading.Thread.__init__(self)
         self.setDaemon(True)
-    def make_connection(self): pass
-    def close_connection(self): pass
-    def send_data(self,ad): pass
-    def good(self): pass
-    def bad(self): pass
+
+    def make_connection(self):
+        raise NotImplementedError()
+
+    def close_connection(self):
+        raise NotImplementedError()
+
+    def send_data(self,ad):
+        raise NotImplementedError()
+
+    def good(self):
+        raise NotImplementedError()
+
+    def bad(self):
+        raise NotImplementedError()
+
     def run(self):
         self.make_connection()
         for ad in self.addrs:
@@ -39,8 +46,8 @@ class DefaultWorker(logWorker):
             self.IP = ip
         else:
             self.IP = host
-        self.headers = {"Host" : host, "Keep-Alive": 300, "Connection" : "keep-alive"}
-        logWorker.__init__(self,addr,return_type)
+        self.headers = {"Host": host, "Keep-Alive": 300, "Connection": "keep-alive"}
+        logWorker.__init__(self, addr, return_type)
 
     def make_connection(self):
         self.connects += 1
@@ -50,13 +57,13 @@ class DefaultWorker(logWorker):
         self.s.close() 
 
     def send_data(self,ad):
-        self.s.request("GET",ad,None,self.headers)
+        self.s.request("GET", ad, None, self.headers)
         response = self.s.getresponse()
         response.read()
 
     def good(self):
-        self.rt[1] += 1
+        self.rt['GOOD'] += 1
 
     def bad(self):
-        self.rt[0] += 1
+        self.rt['BAD'] += 1
         self.status = 0
