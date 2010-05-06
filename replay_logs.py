@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import tests
 import optparse
 
@@ -24,6 +24,7 @@ opt_parser.add_option("--port",
     help="Port (default=80)")
 opt_parser.add_option("-t", type="int", help="Thread Limit", default=40)
 opt_parser.add_option("-p", help="URL Prefix", default="")
+opt_parser.add_option("-P", help="HTTP Basic Auth (as 'username:password')", default="")
 
 
 def main():

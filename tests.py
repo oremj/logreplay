@@ -60,6 +60,7 @@ class TwistedTest(LogReplay):
         self.PREFIX = options.p
         self.IP = options.i
         self.PORT = options.port
+        self.AUTH = options.P
         self.regex = re.compile("(\d\d/\w{3}/\d{4}:\d\d:\d\d:\d\d).*\"GET (/.*?) HTTP.*?\"")
 
     def report(self):
@@ -90,7 +91,10 @@ class TwistedTest(LogReplay):
         return
 
     def replayLog(self):
-        f = tworkers.QuickTesterFactory(ip=self.IP, port=self.PORT, url="http://" + self.HOST + "/", requests=self.log_entries, report=self.report_data)
+        f = tworkers.QuickTesterFactory(
+            ip=self.IP, port=self.PORT, url="http://" + self.HOST + "/",
+            requests=self.log_entries, report=self.report_data,
+            auth=self.AUTH)
         try:
             f.start(self.THREADCOUNT)
         except KeyboardInterrupt:

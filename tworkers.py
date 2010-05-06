@@ -14,8 +14,9 @@ class QuickTester(HTTPClient):
         self.sendCommand(self.factory.method, self.path)
         self.sendHeader('Host', self.factory.headers.get("host", self.factory.host))
         self.sendHeader('User-Agent', self.factory.agent)
-        self.sendHeader('Authorization', 'Basic %s' % base64.b64encode('support:stage'))
-        self.sendHeader('Cookie', 'authtoken=106672_634081562190564790_3c4bf020219c7d1b3df1cd78a49043dc')
+        if hasattr(self, 'auth'):
+            self.sendHeader('Authorization',
+                            'Basic %s' % self.auth.encode('base64'))
         self.endHeaders()
         self.headers = {}
         self.startTime = time.time()
@@ -59,6 +60,8 @@ class QuickTesterFactory(HTTPClientFactory):
         self.report = kwargs.pop('report')
         self.ip = kwargs.pop('ip')
         self.host_port = kwargs.pop('port')
+        if 'auth' in kwargs:
+            self.protocol.auth = kwargs.pop('auth')
         self.activecons = 0
         self.total_reqs = len(self.reqs)
         HTTPClientFactory.__init__(self, timeout=15, **kwargs)
